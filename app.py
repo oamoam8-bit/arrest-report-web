@@ -27,7 +27,6 @@ with st.container(border=True):
         report_date = st.text_input("วัน/เดือน/ปี และเวลา ที่บันทึก", placeholder="เช่น วันที่ 23 กันยายน 2568 เวลาประมาณ 15.30 น.")
         arrest_date = st.text_input("วัน/เดือน/ปี และเวลา ที่จับกุม", placeholder="เช่น วันที่ 23 กันยายน 2568 เวลาประมาณ 13.20 น.")
         arrest_loc = st.text_area("สถานที่เกิดเหตุ/จับกุม", height=100)
-        # แก้ไขบรรทัดนี้แล้วครับ เติม st. ลงไป
         commanders = st.text_area("อำนวยการจับกุมโดย", placeholder="พ.ต.อ... ผกก..., พ.ต.ท... รอง ผกก...", height=100)
         officers = st.text_area("เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่", placeholder="พ.ต.ท..., ร.ต.อ..., ด.ต...", height=100)
     
@@ -43,20 +42,25 @@ with st.container(border=True):
             
         suspect_address = st.text_area("ที่อยู่ผู้ต้องหา", height=68)
         
-        st.markdown("**ข้อมูล พ.ร.บ.อุ้มหายฯ (เวลาที่แจ้ง)**")
-        notify_attorney = st.text_input("เวลาที่แจ้ง อัยการ", placeholder="เช่น 14.00 น.")
-        notify_district = st.text_input("เวลาที่แจ้ง นายอำเภอ", placeholder="เช่น 14.15 น.")
+        st.markdown("**ข้อมูล พ.ร.บ.อุ้มหายฯ**")
+        notify_date = st.text_input("วันที่แจ้งข้อมูล", placeholder="เช่น 23 ก.ย. 2568")
+        col_n1, col_n2 = st.columns(2)
+        with col_n1:
+            notify_attorney = st.text_input("เวลาแจ้งอัยการ", placeholder="เช่น 14.00 น.")
+        with col_n2:
+            notify_district = st.text_input("เวลาแจ้งนายอำเภอ", placeholder="เช่น 14.15 น.")
 
 # ==========================================
 # ⚖️ ส่วนที่ 2: คดี ของกลาง และ พฤติการณ์ (ข้อมูลจริงที่จะนำไปสร้างเอกสาร)
 # ==========================================
 with st.container(border=True):
     st.subheader("⚖️ 2. ของกลาง ข้อหา และพฤติการณ์ (สำหรับสร้างเอกสาร)")
-    st.warning("⚠️ ข้อมูลใน 3 ช่องนี้ จะถูกนำไปสร้างเป็นบันทึกจับกุมฉบับจริง ดังนั้นต้องกรอกให้สมบูรณ์ครับ")
+    st.warning("⚠️ ข้อมูลในช่องนี้ จะถูกนำไปสร้างเป็นบันทึกจับกุมฉบับจริง ดังนั้นต้องกรอกให้สมบูรณ์ครับ")
     
     evidence = st.text_area("ของกลางที่ตรวจยึด", placeholder="1. ... พบที่...\n2. ... พบที่...", height=100)
     charge_input = st.text_area("ข้อกล่าวหา", placeholder="กรอกข้อหาที่นี่...", height=68)
     behavior_input = st.text_area("พฤติการณ์การจับกุมฉบับสมบูรณ์", height=200, placeholder="พิมพ์พฤติการณ์ หรือ ก๊อปปี้ข้อความที่ AI แนะนำจากด้านล่างมาวางที่นี่...")
+    suspect_statement = st.text_area("คำให้การของผู้ต้องหาในชั้นจับกุม", placeholder="เช่น ในชั้นจับกุม ผู้ต้องหาให้การรับสารภาพตลอดข้อกล่าวหา โดยรับว่า...", height=68)
 
 # ==========================================
 # 🤖 ส่วนที่ 3: พื้นที่ทำงานของ AI (แยก 3 บล็อค)
@@ -78,7 +82,8 @@ with st.container(border=True):
                 with st.spinner('กำลังร่างพฤติการณ์...'):
                     st.session_state['ai_result_1'] = model.generate_content(prompt).text
             except Exception as e:
-                st.error(e)
+                st.error(f"เกิดข้อผิดพลาด: {e}")
+    
     if 'ai_result_1' in st.session_state:
         st.success("✨ คำแนะนำจาก AI (ก๊อปปี้ไปวางด้านบนได้เลย):")
         st.write(st.session_state['ai_result_1'])
@@ -98,7 +103,80 @@ with st.container(border=True):
                 with st.spinner('กำลังวิเคราะห์ข้อหา...'):
                     st.session_state['ai_result_2'] = model.generate_content(prompt).text
             except Exception as e:
-                st.error(e)
+                st.error(f"เกิดข้อผิดพลาด: {e}")
+                
     if 'ai_result_2' in st.session_state:
         st.success("✨ ข้อหาที่ AI แนะนำ (ก๊อปปี้ไปวางด้านบนได้เลย):")
-        st.
+        st.write(st.session_state['ai_result_2'])
+
+    st.divider()
+
+    # บล็อคที่ 3: เกลาพฤติการณ์
+    st.markdown("#### 🔹 3.3 ให้ AI เกลาพฤติการณ์ให้สละสลวย")
+    if st.button("✨ เกลาพฤติการณ์"):
+        if not behavior_input:
+            st.error("กรุณาพิมพ์เรื่องราวในช่อง 'พฤติการณ์การจับกุม' ด้านบนก่อนครับ")
+        else:
+            try:
+                genai.configure(api_key=API_KEY)
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                prompt = f"เรียบเรียงข้อความนี้ใหม่ให้เป็น 'พฤติการณ์การจับกุม' ในรูปแบบภาษากฎหมายที่สละสลวย: {behavior_input}"
+                with st.spinner('กำลังเกลาสำนวน...'):
+                    st.session_state['ai_result_3'] = model.generate_content(prompt).text
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาด: {e}")
+                
+    if 'ai_result_3' in st.session_state:
+        st.success("✨ พฤติการณ์ที่เกลาแล้ว (ก๊อปปี้ไปวางทับด้านบนได้เลย):")
+        st.write(st.session_state['ai_result_3'])
+
+# ==========================================
+# 📄 ส่วนที่ 4: ดูตัวอย่าง และ ดาวน์โหลด (ดึงข้อมูลจากช่องกรอกเท่านั้น)
+# ==========================================
+st.divider()
+st.subheader("📄 4. ภาพรวมเอกสาร และ ดาวน์โหลด")
+
+col_preview, col_export = st.columns(2)
+
+with col_preview:
+    if st.button("👁️ แสดงตัวอย่างบันทึกจับกุม", use_container_width=True):
+        st.session_state['show_preview'] = True
+
+with col_export:
+    def create_word_doc():
+        doc = docx.Document()
+        style = doc.styles['Normal']
+        font = style.font
+        font.name = 'TH Sarabun PSK'
+        font.size = Pt(16)
+        
+        title = doc.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title.add_run("บันทึกการจับกุม").bold = True
+        
+        doc.add_paragraph(f"สถานที่ทำบันทึก\t\t{report_loc}")
+        doc.add_paragraph(f"วัน/เดือน/ปี ที่บันทึก\t{report_date}")
+        doc.add_paragraph(f"วัน/เดือน/ปี ที่จับกุม\t{arrest_date}")
+        doc.add_paragraph(f"สถานที่เกิดเหตุ/จับกุม\t{arrest_loc}\n")
+        
+        p_cmd = doc.add_paragraph()
+        p_cmd.add_run("นามเจ้าพนักงานผู้จับภายใต้การอำนวยการของ ").bold = True
+        p_cmd.add_run(f"{commanders}\n")
+        p_cmd.add_run("เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่ ").bold = True
+        p_cmd.add_run(f"{officers}\n")
+        
+        p_sus = doc.add_paragraph()
+        p_sus.add_run("ได้ร่วมกันจับกุมตัวผู้ต้องหา คือ ").bold = True
+        p_sus.add_run(f"{suspect_name} อายุ {suspect_age} ปี สัญชาติ {suspect_nationality} เลขประจำตัว {suspect_id} ที่อยู่ {suspect_address}\n")
+        
+        doc.add_paragraph().add_run("พร้อมด้วยของกลาง").bold = True
+        doc.add_paragraph(f"{evidence}\n")
+        
+        p_charge = doc.add_paragraph()
+        p_charge.add_run("โดยกล่าวหาว่า ").bold = True
+        p_charge.add_run(f"“{charge_input}”\n")
+        
+        doc.add_paragraph().add_run("พร้อมได้แจ้งสิทธิของผู้ถูกจับให้ทราบถึงสิทธิตามกฎหมายตั้งแต่โอกาสแรกที่ถูกจับกุมแล้ว ดังนี้").bold = True
+        doc.add_paragraph("1. มีสิทธิที่จะให้การหรือไม่ให้การก็ได้ และถ้อยคำของผู้ถูกจับอาจใช้เป็นพยานหลักฐานในการพิจารณาคดีได้")
+        doc.add_paragraph("2. มีสิทธิที่จะพบและปรึกษาทนายความเป็นการเฉพาะตัว")
+        doc.add_paragraph("3. มีสิทธิแจ้งให้ญาติหรือผู้ซึ่งตนไว้ว
