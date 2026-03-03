@@ -20,6 +20,8 @@ if 'suspects' not in st.session_state:
     st.session_state.suspects = [{'name': '', 'id': '', 'nationality': 'ไทย', 'age': '', 'address': ''}]
 if 'evidences' not in st.session_state:
     st.session_state.evidences = [{'detail': '', 'location': ''}]
+if 'show_preview' not in st.session_state:
+    st.session_state.show_preview = False
 
 # ==========================================
 # 📝 ส่วนที่ 1: ข้อมูลทั่วไป
@@ -107,9 +109,9 @@ with st.container(border=True):
     behavior_input = st.text_area("พฤติการณ์การจับกุมฉบับสมบูรณ์", height=200, placeholder="พิมพ์พฤติการณ์ หรือ ก๊อปปี้ข้อความที่ AI แนะนำจากด้านล่างมาวางที่นี่...")
     suspect_statement = st.text_area("คำให้การของผู้ต้องหาในชั้นจับกุม", placeholder="เช่น ในชั้นจับกุม ผู้ต้องหาให้การรับสารภาพตลอดข้อกล่าวหา โดยรับว่า...", height=68)
 
-# --- จัดเตรียมข้อมูลให้อยู่ในรูปแบบข้อความเพื่อส่งให้ AI ---
-suspect_text_ai = "\n".join([f"{i+1}. {s['name']} (อายุ {s['age']} ปี)" for i, s in enumerate(st.session_state.suspects) if s['name']])
-evidence_text_ai = "\n".join([f"{i+1}. {e['detail']} (จุดที่พบ: {e['location']})" for i, e in enumerate(st.session_state.evidences) if e['detail']])
+# --- จัดเตรียมข้อมูลให้อยู่ในรูปแบบข้อความเพื่อส่งให้ AI และ Preview ---
+suspect_text_ai = "\n".join([f"{i+1}. {s['name']} อายุ {s['age']} ปี สัญชาติ {s['nationality']} เลขประจำตัว {s['id']} ที่อยู่ {s['address']}" for i, s in enumerate(st.session_state.suspects) if s['name']])
+evidence_text_ai = "\n".join([f"{i+1}. {e['detail']} (พบที่: {e['location']})" for i, e in enumerate(st.session_state.evidences) if e['detail']])
 has_evidence = len([e for e in st.session_state.evidences if e['detail']]) > 0
 evidence_ending_phrase = "พร้อมด้วยของกลาง " if has_evidence else ""
 ending_sentence = f"เจ้าพนักงานตำรวจชุดจับกุมจึงได้ควบคุมตัวผู้ต้องหา {evidence_ending_phrase}มาทำบันทึกจับกุมที่ {report_loc} จากนั้นนำตัวผู้ต้องหา {evidence_ending_phrase}ส่งพนักงานสอบสวนเพื่อดำเนินคดีตามกฎหมาย"
@@ -120,7 +122,6 @@ ending_sentence = f"เจ้าพนักงานตำรวจชุดจ
 with st.container(border=True):
     st.subheader("🤖 5. ผู้ช่วย AI (กดเพื่อขอคำแนะนำ)")
 
-    # 🔹 5.1 ร่างพฤติการณ์ใหม่ (บังคับประโยคจบ)
     st.markdown("#### 🔹 5.1 ให้ AI ร่างพฤติการณ์ใหม่ (กรณีไม่ได้พิมพ์พฤติการณ์เลย)")
     if st.button("📝 ร่างพฤติการณ์จากข้อมูลทั้งหมด"):
         if not charge_input or not arrest_loc or not suspect_text_ai:
@@ -154,7 +155,6 @@ with st.container(border=True):
 
     st.divider()
 
-    # 🔹 5.2 แนะนำข้อหา (อ้างอิงมาตราล่าสุด)
     st.markdown("#### 🔹 5.2 ให้ AI วิเคราะห์และแนะนำข้อหา (พร้อมกฎหมายอ้างอิง)")
     if st.button("⚖️ วิเคราะห์ข้อหาและมาตรา"):
         if not behavior_input:
@@ -179,7 +179,6 @@ with st.container(border=True):
 
     st.divider()
 
-    # 🔹 5.3 เกลาพฤติการณ์ (บังคับประโยคจบ)
     st.markdown("#### 🔹 5.3 ให้ AI เกลาและเติมเต็มพฤติการณ์ให้สมบูรณ์")
     if st.button("✨ เกลาพฤติการณ์ให้สมบูรณ์พร้อมใช้"):
         if not behavior_input:
@@ -206,109 +205,168 @@ with st.container(border=True):
         st.write(st.session_state['ai_result_3'])
 
 # ==========================================
-# 📄 ส่วนที่ 6: สร้างไฟล์ Word
+# 📄 ส่วนที่ 6: สร้างไฟล์ Word และดูตัวอย่าง
 # ==========================================
 st.divider()
-st.subheader("📄 6. ดาวน์โหลดบันทึกจับกุมฉบับสมบูรณ์")
+st.subheader("📄 6. ภาพรวมเอกสาร และ ดาวน์โหลด")
 
-def create_word_doc():
-    doc = docx.Document()
-    style = doc.styles['Normal']
-    font = style.font
-    font.name = 'TH Sarabun PSK'
-    font.size = Pt(16)
-    
-    title = doc.add_paragraph()
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title.add_run("บันทึกการจับกุม").bold = True
-    
-    doc.add_paragraph(f"สถานที่ทำบันทึก\t\t{report_loc}")
-    doc.add_paragraph(f"วัน/เดือน/ปี ที่บันทึก\t{report_date}")
-    doc.add_paragraph(f"วัน/เดือน/ปี ที่จับกุม\t{arrest_date}")
-    doc.add_paragraph(f"สถานที่เกิดเหตุ/จับกุม\t{arrest_loc}\n")
-    
-    p_cmd = doc.add_paragraph()
-    p_cmd.add_run("นามเจ้าพนักงานผู้จับภายใต้การอำนวยการของ ").bold = True
-    p_cmd.add_run(f"{commanders}\n")
-    p_cmd.add_run("เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่ ").bold = True
-    p_cmd.add_run(f"{officers}\n")
-    
-    # --- พิมพ์รายชื่อผู้ต้องหาทั้งหมด ---
-    p_sus = doc.add_paragraph()
-    p_sus.add_run("ได้ร่วมกันจับกุมตัวผู้ต้องหา คือ\n").bold = True
-    for i, s in enumerate(st.session_state.suspects):
-        if s['name']:
-            p_sus.add_run(f"{i+1}. {s['name']} อายุ {s['age']} ปี สัญชาติ {s['nationality']} เลขประจำตัว {s['id']} ที่อยู่ {s['address']}\n")
-    
-    # --- พิมพ์ของกลางทั้งหมด ---
-    doc.add_paragraph().add_run("พร้อมด้วยของกลาง").bold = True
-    p_ev = doc.add_paragraph()
-    if has_evidence:
-        for i, e in enumerate(st.session_state.evidences):
-            if e['detail']:
-                p_ev.add_run(f"{i+1}. {e['detail']} (พบที่: {e['location']})\n")
-    else:
-        p_ev.add_run("- ไม่มีของกลาง -\n")
-    
-    p_charge = doc.add_paragraph()
-    p_charge.add_run("โดยกล่าวหาว่า ").bold = True
-    p_charge.add_run(f"“{charge_input}”\n")
-    
-    doc.add_paragraph().add_run("พร้อมได้แจ้งสิทธิของผู้ถูกจับให้ทราบถึงสิทธิตามกฎหมายตั้งแต่โอกาสแรกที่ถูกจับกุมแล้ว ดังนี้").bold = True
-    doc.add_paragraph("1. มีสิทธิที่จะให้การหรือไม่ให้การก็ได้ และถ้อยคำของผู้ถูกจับอาจใช้เป็นพยานหลักฐานในการพิจารณาคดีได้")
-    doc.add_paragraph("2. มีสิทธิที่จะพบและปรึกษาทนายความเป็นการเฉพาะตัว")
-    doc.add_paragraph("3. มีสิทธิแจ้งให้ญาติหรือผู้ซึ่งตนไว้วางใจทราบถึงการจับกุม (ถ้าไม่เป็นอุปสรรคต่อการจับกุม หรือควบคุม และ/หรือปัญหาด้านความปลอดภัย)\n"
-                      "ผู้ถูกจับได้รับทราบและเข้าใจถึงวัตถุประสงค์และเงื่อนไขของกฎหมายข้างต้นดีแล้ว\n")
-    
-    p_beh = doc.add_paragraph()
-    p_beh.add_run("พฤติการณ์ในการจับกุม กล่าวคือ ").bold = True
-    p_beh.add_run(f"{behavior_input}\n")
-    
-    p_state = doc.add_paragraph()
-    p_state.add_run("ในชั้นจับกุม ").bold = True
-    p_state.add_run(f"{suspect_statement}\n")
-    
-    doc.add_paragraph("ในการจับครั้งนี้ เจ้าพนักงานผู้จับทุกนายได้ปฏิบัติตามอำนาจหน้าที่ตามกฎหมาย มิได้บังคับ ขู่เข็ญ หลอกลวง ทำร้ายร่างกาย...")
-    doc.add_paragraph("ในการควบคุมตัวผู้ถูกจับ เจ้าหน้าที่ผู้จับกุมได้ทำการบันทึกภาพและเสียงอย่างต่อเนื่อง...")
-    doc.add_paragraph("ผู้จับกุมไม่ได้กระทำการใดๆ อันเป็นการทรมาน การทำที่โหดร้าย ไร้มนุษยธรรม...")
-    doc.add_paragraph(f"เจ้าหน้าที่ผู้จับกุม ได้แจ้งข้อมูลเกี่ยวกับผู้ถูกควบคุมตัว ไปยังสำนักงานอัยการ เมื่อวันที่ {notify_date} เวลา {notify_attorney} น. เรียบร้อยแล้ว")
-    doc.add_paragraph(f"เจ้าหน้าที่ผู้จับกุม ได้แจ้งข้อมูลเกี่ยวกับผู้ถูกควบคุมตัว ไปยังนายอำเภอ เมื่อวันที่ {notify_date} เวลา {notify_district} น. เรียบร้อยแล้ว\n")
-    
-    doc.add_paragraph("รับรองว่าข้อความตามบันทึกการจับกุมนี้ถูกต้องตามความเป็นจริงทุกประการ จึงให้ลงลายมือชื่อไว้เป็นหลักฐาน\n\n")
-    
-    # --- ช่องลายเซ็นผู้ต้องหา (สร้างตามจำนวนคน) ---
-    for s in st.session_state.suspects:
-        if s['name']:
-            p_sign1 = doc.add_paragraph()
-            p_sign1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p_sign1.add_run(f"(ลงชื่อ)........................................................................ ผู้ถูกจับ/รับสำเนาบันทึกการจับ\n({s['name']})\n\n")
-    
-    # --- ช่องลายเซ็นชุดจับกุม ---
-    raw_officers = officers.replace('\n', ',').replace('และ', ',').split(',')
-    officer_list = [o.strip() for o in raw_officers if o.strip()]
-    if len(officer_list) > 0:
-        p_head = doc.add_paragraph()
-        p_head.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_head.add_run(f"(ลงชื่อ)........................................................................ หัวหน้าชุดจับกุม\n({officer_list[0]})\n\n")
-        for off in officer_list[1:]:
-            p_co = doc.add_paragraph()
-            p_co.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p_co.add_run(f"(ลงชื่อ)........................................................................ ร่วมจับกุม\n({off})\n\n")
-    
-    p_reader = doc.add_paragraph()
-    p_reader.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_reader.add_run("(ลงชื่อ)........................................................................ ผู้บันทึก/อ่าน\n")
-    
-    bio = io.BytesIO()
-    doc.save(bio)
-    return bio.getvalue()
+col_preview, col_export = st.columns(2)
 
-if st.button("📥 ดาวน์โหลดไฟล์ Word (.docx)", type="primary", use_container_width=True):
+with col_preview:
+    if st.button("👁️ แสดงตัวอย่างบันทึกจับกุม", use_container_width=True):
+        st.session_state.show_preview = True
+
+with col_export:
+    def create_word_doc():
+        doc = docx.Document()
+        style = doc.styles['Normal']
+        font = style.font
+        font.name = 'TH Sarabun PSK'
+        font.size = Pt(16)
+        
+        title = doc.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title.add_run("บันทึกการจับกุม").bold = True
+        
+        doc.add_paragraph(f"สถานที่ทำบันทึก\t\t{report_loc}")
+        doc.add_paragraph(f"วัน/เดือน/ปี ที่บันทึก\t{report_date}")
+        doc.add_paragraph(f"วัน/เดือน/ปี ที่จับกุม\t{arrest_date}")
+        doc.add_paragraph(f"สถานที่เกิดเหตุ/จับกุม\t{arrest_loc}\n")
+        
+        p_cmd = doc.add_paragraph()
+        p_cmd.add_run("นามเจ้าพนักงานผู้จับภายใต้การอำนวยการของ ").bold = True
+        p_cmd.add_run(f"{commanders}\n")
+        p_cmd.add_run("เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่ ").bold = True
+        p_cmd.add_run(f"{officers}\n")
+        
+        # --- พิมพ์รายชื่อผู้ต้องหาทั้งหมด ---
+        p_sus = doc.add_paragraph()
+        p_sus.add_run("ได้ร่วมกันจับกุมตัวผู้ต้องหา คือ\n").bold = True
+        for i, s in enumerate(st.session_state.suspects):
+            if s['name']:
+                p_sus.add_run(f"{i+1}. {s['name']} อายุ {s['age']} ปี สัญชาติ {s['nationality']} เลขประจำตัว {s['id']} ที่อยู่ {s['address']}\n")
+        
+        # --- พิมพ์ของกลางทั้งหมด ---
+        doc.add_paragraph().add_run("พร้อมด้วยของกลาง").bold = True
+        p_ev = doc.add_paragraph()
+        if has_evidence:
+            for i, e in enumerate(st.session_state.evidences):
+                if e['detail']:
+                    p_ev.add_run(f"{i+1}. {e['detail']} (พบที่: {e['location']})\n")
+        else:
+            p_ev.add_run("- ไม่มีของกลาง -\n")
+        
+        p_charge = doc.add_paragraph()
+        p_charge.add_run("โดยกล่าวหาว่า ").bold = True
+        p_charge.add_run(f"“{charge_input}”\n")
+        
+        doc.add_paragraph().add_run("พร้อมได้แจ้งสิทธิของผู้ถูกจับให้ทราบถึงสิทธิตามกฎหมายตั้งแต่โอกาสแรกที่ถูกจับกุมแล้ว ดังนี้").bold = True
+        doc.add_paragraph("1. มีสิทธิที่จะให้การหรือไม่ให้การก็ได้ และถ้อยคำของผู้ถูกจับอาจใช้เป็นพยานหลักฐานในการพิจารณาคดีได้")
+        doc.add_paragraph("2. มีสิทธิที่จะพบและปรึกษาทนายความเป็นการเฉพาะตัว")
+        doc.add_paragraph("3. มีสิทธิแจ้งให้ญาติหรือผู้ซึ่งตนไว้วางใจทราบถึงการจับกุม (ถ้าไม่เป็นอุปสรรคต่อการจับกุม หรือควบคุม และ/หรือปัญหาด้านความปลอดภัย)\n"
+                          "ผู้ถูกจับได้รับทราบและเข้าใจถึงวัตถุประสงค์และเงื่อนไขของกฎหมายข้างต้นดีแล้ว\n")
+        
+        p_beh = doc.add_paragraph()
+        p_beh.add_run("พฤติการณ์ในการจับกุม กล่าวคือ ").bold = True
+        p_beh.add_run(f"{behavior_input}\n")
+        
+        p_state = doc.add_paragraph()
+        p_state.add_run("ในชั้นจับกุม ").bold = True
+        p_state.add_run(f"{suspect_statement}\n")
+        
+        doc.add_paragraph("ในการจับครั้งนี้ เจ้าพนักงานผู้จับทุกนายได้ปฏิบัติตามอำนาจหน้าที่ตามกฎหมาย มิได้บังคับ ขู่เข็ญ หลอกลวง ทำร้ายร่างกาย "
+                          "หรือทำอันตรายแก่กาย หรือจิตใจผู้ใด หรือให้สัญญาอื่นใดที่กระทำโดยมิชอบกับผู้ต้องหาแต่อย่างใด "
+                          "และมิได้ทำให้ทรัพย์สินของผู้ใด สูญหาย เสียหาย หรือไร้ประโยชน์แต่อย่างใด")
+        
+        doc.add_paragraph("ในการควบคุมตัวผู้ถูกจับ เจ้าหน้าที่ผู้จับกุมได้ทำการบันทึกภาพและเสียงอย่างต่อเนื่องในขณะจับและควบคุมตัวผู้ถูกจับ"
+                          "ในชั้นจับกุมจนกระทั่งส่งตัวให้พนักงานสอบสวน ตามมาตรา ๒๒ วรรคหนึ่ง แห่ง พ.ร.บ.ป้องกันและปราบปรามการทรมาน"
+                          "และการกระทำให้สูญหาย พ.ศ.๒๕๖๕")
+        
+        doc.add_paragraph("ผู้จับกุมไม่ได้กระทำการใดๆ อันเป็นการทรมาน การทำที่โหดร้าย ไร้มนุษยธรรม หรือย่ำยีศักดิ์ศรีความเป็นมนุษย์"
+                          "หรือกระทำให้บุคคลสูญหายแต่อย่างใด")
+        
+        doc.add_paragraph(f"เจ้าหน้าที่ผู้จับกุม ได้แจ้งข้อมูลเกี่ยวกับผู้ถูกควบคุมตัว ตามมาตรา ๒๒ วรรคสอง แห่ง พ.ร.บ.ป้องกันและปราบปราม"
+                          f"การทรมานและการกระทำให้สูญหาย พ.ศ.๒๕๖๕ ไปยัง ศูนย์ป้องกันปราบปรามทรมานและการทำให้บุคคลสูญหาย"
+                          f"ประจำสำนักงานอัยการจังหวัดภูเก็ต เมื่อวันที่ {notify_date} เวลา {notify_attorney} น. เรียบร้อยแล้ว")
+        
+        doc.add_paragraph(f"เจ้าหน้าที่ผู้จับกุม ได้แจ้งข้อมูลเกี่ยวกับผู้ถูกควบคุมตัว ตามมาตรา ๒๒ วรรคสอง แห่ง พ.ร.บ.ป้องกันและปราบปราม"
+                          f"การทรมานและการกระทำให้สูญหาย พ.ศ.๒๕๖๕ ไปยังนายอำเภอเมือง จังหวัดภูเก็ตเป็นผู้รับแจ้งการควบคุมตัว "
+                          f"เมื่อวันที่ {notify_date} เวลา {notify_district} น. เรียบร้อยแล้ว\n")
+        
+        doc.add_paragraph("รับรองว่าข้อความตามบันทึกการจับกุมนี้ถูกต้องตามความเป็นจริงทุกประการ จึงให้ลงลายมือชื่อไว้เป็นหลักฐาน\n\n")
+        
+        # --- ช่องลายเซ็นผู้ต้องหา (สร้างตามจำนวนคน) ---
+        for s in st.session_state.suspects:
+            if s['name']:
+                p_sign1 = doc.add_paragraph()
+                p_sign1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_sign1.add_run(f"(ลงชื่อ)........................................................................ ผู้ถูกจับ/รับสำเนาบันทึกการจับ\n({s['name']})\n\n")
+        
+        # --- ช่องลายเซ็นชุดจับกุม ---
+        raw_officers = officers.replace('\n', ',').replace('และ', ',').split(',')
+        officer_list = [o.strip() for o in raw_officers if o.strip()]
+        if len(officer_list) > 0:
+            p_head = doc.add_paragraph()
+            p_head.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_head.add_run(f"(ลงชื่อ)........................................................................ หัวหน้าชุดจับกุม\n({officer_list[0]})\n\n")
+            for off in officer_list[1:]:
+                p_co = doc.add_paragraph()
+                p_co.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_co.add_run(f"(ลงชื่อ)........................................................................ ร่วมจับกุม\n({off})\n\n")
+        
+        p_reader = doc.add_paragraph()
+        p_reader.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_reader.add_run("(ลงชื่อ)........................................................................ ผู้บันทึก/อ่าน\n")
+        
+        bio = io.BytesIO()
+        doc.save(bio)
+        return bio.getvalue()
+
     word_file = create_word_doc()
     st.download_button(
-        label="คลิกที่นี่เพื่อบันทึกไฟล์ลงเครื่อง",
+        label="📥 ดาวน์โหลดไฟล์ Word (.docx)",
         data=word_file,
         file_name=f"บันทึกจับกุม.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        type="primary"
+        type="primary",
+        use_container_width=True
     )
+
+# ==========================================
+# 📋 กล่องแสดงตัวอย่าง (Preview)
+# ==========================================
+if st.session_state.show_preview:
+    evidence_html = evidence_text_ai.replace('\n', '<br>')
+    if not evidence_html:
+        evidence_html = "- ไม่มีของกลาง -"
+        
+    suspect_html = suspect_text_ai.replace('\n', '<br>')
+    if not suspect_html:
+        suspect_html = "- ยังไม่ได้กรอกข้อมูลผู้ต้องหา -"
+        
+    behavior_html = behavior_input.replace('\n', '<br>')
+    
+    st.markdown("---")
+    st.markdown("### 📋 ตัวอย่างบันทึกจับกุม (อ้างอิงจากข้อมูลที่ท่านกรอก)")
+    preview_text = f"""
+<div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; color: black; font-size: 16px;">
+    <h3 style="text-align: center;">บันทึกการจับกุม</h3>
+    <p><b>สถานที่ทำบันทึก:</b> {report_loc}</p>
+    <p><b>วัน/เดือน/ปี ที่บันทึก:</b> {report_date}</p>
+    <p><b>วัน/เดือน/ปี ที่จับกุม:</b> {arrest_date}</p>
+    <p><b>สถานที่เกิดเหตุ/จับกุม:</b> {arrest_loc}</p>
+    <br>
+    <p><b>นามเจ้าพนักงานผู้จับภายใต้การอำนวยการของ</b> {commanders}</p>
+    <p><b>เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่</b> {officers}</p>
+    <br>
+    <p><b>ได้ร่วมกันจับกุมตัวผู้ต้องหา คือ</b><br>{suspect_html}</p>
+    <p><b>พร้อมด้วยของกลาง:</b><br>{evidence_html}</p>
+    <p><b>โดยกล่าวหาว่า:</b> “{charge_input}”</p>
+    <br>
+    <p><b>พฤติการณ์ในการจับกุม กล่าวคือ</b><br>{behavior_html}</p>
+    <p><b>ในชั้นจับกุม</b> {suspect_statement}</p>
+    <br>
+    <p><i>(ข้อความแจ้งสิทธิ, พ.ร.บ.อุ้มหายฯ และช่องเซ็นชื่อ จะถูกแนบอัตโนมัติในไฟล์ Word ตามรูปแบบมาตรฐานครับ)</i></p>
+</div>
+    """
+    st.markdown(preview_text, unsafe_allow_html=True)
