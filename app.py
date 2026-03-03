@@ -6,14 +6,51 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 import io
 
 # ==========================================
-# 🔑 ส่วนตั้งค่าระบบ
+# 🔑 ส่วนตั้งค่าระบบ & ปรับแต่ง UI (CSS)
 # ==========================================
 API_KEY = st.secrets["GEMINI_API_KEY"]
 
-st.set_page_config(page_title="ระบบบันทึกจับกุมอัจฉริยะ", layout="wide", page_icon="🚓")
+st.set_page_config(page_title="e-Arrest Report System", layout="wide", page_icon="🛡️")
 
-st.title("🚓 ระบบสร้างบันทึกจับกุม (ฝ่ายสืบสวน)")
-st.markdown("กรอกข้อมูลให้ครบถ้วน สามารถเพิ่มจำนวนผู้ต้องหาและของกลางได้ไม่จำกัด")
+# ฝัง CSS เพื่อปรับให้หน้าตาดูเป็นทางการ (Navy Blue Tone / Clean UI)
+st.markdown("""
+<style>
+    /* ปรับสีตัวอักษรหัวข้อหลักให้เป็นสีกรมท่า */
+    h1, h2, h3 {
+        color: #0F2C59;
+        font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    /* ปรับแต่งกรอบ Container ให้ดูเป็นแฟ้มเอกสาร */
+    div[data-testid="stContainer"] {
+        border: 1px solid #D6DCE5;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background-color: #FFFFFF;
+        padding: 10px;
+    }
+    /* ปรับแต่งปุ่มกดปกติ */
+    div.stButton > button {
+        border-radius: 4px;
+        border: 1px solid #0F2C59;
+        color: #0F2C59;
+        font-weight: bold;
+    }
+    /* ปรับแต่งปุ่มกด Primary (ปุ่มหลัก) */
+    div.stButton > button[data-baseweb="button"]:hover {
+        background-color: #0F2C59;
+        color: #FFFFFF;
+        border: 1px solid #0F2C59;
+    }
+    /* ปรับฉากหลังของหน้าเว็บเล็กน้อยให้ดูสะอาดตา */
+    .stApp {
+        background-color: #F8F9FA;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("ระบบจัดทำบันทึกการจับกุมอิเล็กทรอนิกส์ (e-Arrest Report)")
+st.markdown("**ศูนย์ปฏิบัติการ งานสืบสวน | ระบบสนับสนุนการจัดทำสำนวนการจับกุมและประมวลผลข้อกฎหมาย**")
+st.markdown("---")
 
 # --- Initialize Session State สำหรับผู้ต้องหาและของกลาง ---
 if 'suspects' not in st.session_state:
@@ -26,8 +63,8 @@ if 'show_preview' not in st.session_state:
 # ==========================================
 # 📝 ส่วนที่ 1: ข้อมูลทั่วไป
 # ==========================================
-with st.container(border=True):
-    st.subheader("📌 1. ข้อมูลการจับกุมพื้นฐาน")
+with st.container():
+    st.markdown("### ส่วนที่ 1: ข้อมูลการจับกุมพื้นฐาน")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -40,7 +77,7 @@ with st.container(border=True):
         commanders = st.text_area("อำนวยการจับกุมโดย", placeholder="พ.ต.อ... ผกก..., พ.ต.ท... รอง ผกก...", height=68)
         officers = st.text_area("เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่", placeholder="พิมพ์ชื่อคั่นด้วยลูกน้ำ เช่น: พ.ต.ท.สมชาย, ร.ต.อ.รักชาติ, ด.ต.ยอดเยี่ยม", height=100)
         
-        st.markdown("**ข้อมูล พ.ร.บ.อุ้มหายฯ**")
+        st.markdown("**ข้อมูลการแจ้ง พ.ร.บ.ป้องกันและปราบปรามการทรมานฯ**")
         notify_date = st.text_input("วันที่แจ้งข้อมูล", placeholder="เช่น 23 ก.ย. 2568")
         col_n1, col_n2 = st.columns(2)
         with col_n1:
@@ -51,63 +88,63 @@ with st.container(border=True):
 # ==========================================
 # 👤 ส่วนที่ 2: ข้อมูลผู้ต้องหา (เพิ่มได้หลายคน)
 # ==========================================
-with st.container(border=True):
-    st.subheader("👤 2. ข้อมูลผู้ต้องหา")
+with st.container():
+    st.markdown("### ส่วนที่ 2: ข้อมูลผู้ต้องหา")
     
     for i in range(len(st.session_state.suspects)):
-        st.markdown(f"**ผู้ต้องหาคนที่ {i+1}**")
+        st.markdown(f"**ผู้ต้องหารายที่ {i+1}**")
         c1, c2, c3 = st.columns([2, 2, 1])
         st.session_state.suspects[i]['name'] = c1.text_input("ชื่อ-นามสกุล", value=st.session_state.suspects[i]['name'], key=f"s_name_{i}")
-        st.session_state.suspects[i]['id'] = c2.text_input("เลขบัตรประชาชน/พาสปอร์ต", value=st.session_state.suspects[i]['id'], key=f"s_id_{i}")
+        st.session_state.suspects[i]['id'] = c2.text_input("เลขประจำตัวประชาชน/พาสปอร์ต", value=st.session_state.suspects[i]['id'], key=f"s_id_{i}")
         st.session_state.suspects[i]['age'] = c3.text_input("อายุ", value=st.session_state.suspects[i]['age'], key=f"s_age_{i}")
         
         c4, c5 = st.columns([1, 4])
         st.session_state.suspects[i]['nationality'] = c4.text_input("สัญชาติ", value=st.session_state.suspects[i]['nationality'], key=f"s_nat_{i}")
-        st.session_state.suspects[i]['address'] = c5.text_input("ที่อยู่", value=st.session_state.suspects[i]['address'], key=f"s_add_{i}")
+        st.session_state.suspects[i]['address'] = c5.text_input("ภูมิลำเนา/ที่อยู่", value=st.session_state.suspects[i]['address'], key=f"s_add_{i}")
         st.markdown("---")
         
     col_btn_s1, col_btn_s2 = st.columns([1, 5])
     with col_btn_s1:
-        if st.button("➕ เพิ่มผู้ต้องหา", use_container_width=True):
+        if st.button("+ เพิ่มรายชื่อผู้ต้องหา", use_container_width=True):
             st.session_state.suspects.append({'name': '', 'id': '', 'nationality': 'ไทย', 'age': '', 'address': ''})
             st.rerun()
     with col_btn_s2:
         if len(st.session_state.suspects) > 1:
-            if st.button("➖ ลบคนล่าสุด"):
+            if st.button("- ลบรายการล่าสุด", key="del_s"):
                 st.session_state.suspects.pop()
                 st.rerun()
 
 # ==========================================
 # 📦 ส่วนที่ 3: ข้อมูลของกลาง (เพิ่มได้หลายรายการ)
 # ==========================================
-with st.container(border=True):
-    st.subheader("📦 3. ข้อมูลของกลาง")
+with st.container():
+    st.markdown("### ส่วนที่ 3: บัญชีของกลาง")
     
     for i in range(len(st.session_state.evidences)):
         col_e1, col_e2 = st.columns([2, 1])
-        st.session_state.evidences[i]['detail'] = col_e1.text_input(f"รายการของกลางที่ {i+1}", value=st.session_state.evidences[i]['detail'], placeholder="เช่น ยาบ้า จำนวน 100 เม็ด", key=f"e_det_{i}")
-        st.session_state.evidences[i]['location'] = col_e2.text_input(f"จุดที่พบ (รายการที่ {i+1})", value=st.session_state.evidences[i]['location'], placeholder="เช่น ในกระเป๋ากางเกงขวา", key=f"e_loc_{i}")
+        st.session_state.evidences[i]['detail'] = col_e1.text_input(f"รายการของกลางลำดับที่ {i+1}", value=st.session_state.evidences[i]['detail'], placeholder="ระบุรายละเอียดของกลาง", key=f"e_det_{i}")
+        st.session_state.evidences[i]['location'] = col_e2.text_input(f"สถานที่/จุดที่ตรวจพบ (รายการที่ {i+1})", value=st.session_state.evidences[i]['location'], placeholder="ระบุจุดตรวจยึด", key=f"e_loc_{i}")
         
     col_btn_e1, col_btn_e2 = st.columns([1, 5])
     with col_btn_e1:
-        if st.button("➕ เพิ่มของกลาง", use_container_width=True):
+        if st.button("+ เพิ่มรายการของกลาง", use_container_width=True):
             st.session_state.evidences.append({'detail': '', 'location': ''})
             st.rerun()
     with col_btn_e2:
         if len(st.session_state.evidences) > 1:
-            if st.button("➖ ลบรายการล่าสุด"):
+            if st.button("- ลบรายการล่าสุด", key="del_e"):
                 st.session_state.evidences.pop()
                 st.rerun()
 
 # ==========================================
 # ⚖️ ส่วนที่ 4: ข้อหาและพฤติการณ์
 # ==========================================
-with st.container(border=True):
-    st.subheader("⚖️ 4. ข้อหาและพฤติการณ์")
+with st.container():
+    st.markdown("### ส่วนที่ 4: ฐานความผิดและพฤติการณ์แห่งการจับกุม")
     
-    charge_input = st.text_area("ข้อกล่าวหา", placeholder="กรอกข้อหาที่นี่...", height=68)
-    behavior_input = st.text_area("พฤติการณ์การจับกุมฉบับสมบูรณ์", height=200, placeholder="พิมพ์พฤติการณ์ หรือ ก๊อปปี้ข้อความที่ AI แนะนำจากด้านล่างมาวางที่นี่...")
-    suspect_statement = st.text_area("คำให้การของผู้ต้องหาในชั้นจับกุม", placeholder="เช่น ในชั้นจับกุม ผู้ต้องหาให้การรับสารภาพตลอดข้อกล่าวหา โดยรับว่า...", height=68)
+    charge_input = st.text_area("ข้อกล่าวหา / ฐานความผิด", placeholder="ระบุข้อกล่าวหา...", height=68)
+    behavior_input = st.text_area("พฤติการณ์แห่งการจับกุม (ฉบับสมบูรณ์)", height=200, placeholder="ระบุพฤติการณ์ หรือคัดลอกข้อความจากระบบประมวลผลอัจฉริยะ (AI) มาวางที่นี่...")
+    suspect_statement = st.text_area("คำให้การของผู้ถูกจับในชั้นจับกุม", placeholder="ระบุคำให้การเบื้องต้น เช่น ในชั้นจับกุม ผู้ถูกจับให้การรับสารภาพตลอดข้อกล่าวหา โดยให้การว่า...", height=68)
 
 # --- จัดเตรียมข้อมูลให้อยู่ในรูปแบบข้อความเพื่อส่งให้ AI และ Preview ---
 suspect_text_ai = "\n".join([f"{i+1}. {s['name']} อายุ {s['age']} ปี สัญชาติ {s['nationality']} เลขประจำตัว {s['id']} ที่อยู่ {s['address']}" for i, s in enumerate(st.session_state.suspects) if s['name']])
@@ -119,13 +156,14 @@ ending_sentence = f"เจ้าพนักงานตำรวจชุดจ
 # ==========================================
 # 🤖 ส่วนที่ 5: ผู้ช่วย AI
 # ==========================================
-with st.container(border=True):
-    st.subheader("🤖 5. ผู้ช่วย AI (กดเพื่อขอคำแนะนำ)")
+with st.container():
+    st.markdown("### ส่วนที่ 5: ระบบประมวลผลอัจฉริยะ (AI Assistant)")
+    st.info("คำแนะนำ: เมื่อระบบประมวลผลข้อความเสร็จสิ้น กรุณาคัดลอกข้อความที่ได้ไปวางใน 'ส่วนที่ 4' ด้านบน")
 
-    st.markdown("#### 🔹 5.1 ให้ AI ร่างพฤติการณ์ใหม่ (กรณีไม่ได้พิมพ์พฤติการณ์เลย)")
-    if st.button("📝 ร่างพฤติการณ์จากข้อมูลทั้งหมด"):
+    st.markdown("**5.1 สร้างพฤติการณ์อัตโนมัติ (กรณีไม่มีข้อมูลพฤติการณ์เบื้องต้น)**")
+    if st.button("ประมวลผลร่างพฤติการณ์จากข้อมูลทั้งหมด (Generate Report)"):
         if not charge_input or not arrest_loc or not suspect_text_ai:
-            st.error("กรุณากรอก 'ผู้ต้องหา', 'สถานที่เกิดเหตุ', และ 'ข้อกล่าวหา' ให้ครบก่อนครับ")
+            st.error("กรุณากรอกข้อมูล 'ผู้ต้องหา', 'สถานที่เกิดเหตุ', และ 'ข้อกล่าวหา' ให้ครบถ้วนก่อนทำการประมวลผล")
         else:
             try:
                 genai.configure(api_key=API_KEY)
@@ -144,21 +182,21 @@ with st.container(border=True):
                     f"- ข้อหา: {charge_input}\n"
                     f"- คำให้การ: {suspect_statement}\n"
                 )
-                with st.spinner('กำลังร่างพฤติการณ์ (รอสักครู่)...'):
+                with st.spinner('กำลังประมวลผลร่างพฤติการณ์...'):
                     st.session_state['ai_result_1'] = model.generate_content(prompt).text
             except Exception as e:
-                st.error(f"เกิดข้อผิดพลาด: {e}")
+                st.error(f"ระบบขัดข้อง: {e}")
     
     if 'ai_result_1' in st.session_state:
-        st.success("✨ ก๊อปปี้ข้อความนี้ไปวางในช่องพฤติการณ์ด้านบนได้เลย:")
+        st.success("ข้อความที่ระบบสร้างขึ้น:")
         st.write(st.session_state['ai_result_1'])
 
-    st.divider()
+    st.markdown("---")
 
-    st.markdown("#### 🔹 5.2 ให้ AI วิเคราะห์และแนะนำข้อหา (พร้อมกฎหมายอ้างอิง)")
-    if st.button("⚖️ วิเคราะห์ข้อหาและมาตรา"):
+    st.markdown("**5.2 วิเคราะห์ข้อกฎหมายและฐานความผิด (Legal Analysis)**")
+    if st.button("วิเคราะห์ข้อกฎหมายและมาตรา (Analyze Charges)"):
         if not behavior_input:
-            st.error("กรุณาพิมพ์เรื่องราวในช่อง 'พฤติการณ์การจับกุม' ด้านบนก่อนครับ")
+            st.error("กรุณาระบุพฤติการณ์ใน 'ส่วนที่ 4' ก่อนทำการวิเคราะห์")
         else:
             try:
                 genai.configure(api_key=API_KEY)
@@ -168,21 +206,21 @@ with st.container(border=True):
                     f"จงระบุ 'ฐานความผิด/ข้อกล่าวหา' พร้อมทั้ง 'ชื่อพระราชบัญญัติ และ มาตราที่เกี่ยวข้อง' \n"
                     f"คำสั่งสำคัญ: ต้องใช้กฎหมายไทยที่อัปเดตบังคับใช้ล่าสุดเท่านั้น ห้ามดึงกฎหมายที่ถูกยกเลิกมาตอบเด็ดขาด ตอบเป็นข้อๆ ให้ชัดเจนเพื่อนำไปแจ้งข้อหา"
                 )
-                with st.spinner('กำลังค้นหาข้อกฎหมายและมาตรา...'):
+                with st.spinner('กำลังสืบค้นข้อกฎหมาย...'):
                     st.session_state['ai_result_2'] = model.generate_content(prompt).text
             except Exception as e:
-                st.error(f"เกิดข้อผิดพลาด: {e}")
+                st.error(f"ระบบขัดข้อง: {e}")
                 
     if 'ai_result_2' in st.session_state:
-        st.success("✨ ข้อหาที่ AI แนะนำ (ตรวจสอบอีกครั้งก่อนก๊อปปี้ไปใช้งาน):")
+        st.success("ผลการวิเคราะห์ข้อกฎหมาย (กรุณาตรวจสอบความถูกต้องก่อนใช้งาน):")
         st.write(st.session_state['ai_result_2'])
 
-    st.divider()
+    st.markdown("---")
 
-    st.markdown("#### 🔹 5.3 ให้ AI เกลาและเติมเต็มพฤติการณ์ให้สมบูรณ์")
-    if st.button("✨ เกลาพฤติการณ์ให้สมบูรณ์พร้อมใช้"):
+    st.markdown("**5.3 ตรวจทานและขยายความพฤติการณ์ให้สมบูรณ์ (Refine Report)**")
+    if st.button("ตรวจทานและเรียบเรียงพฤติการณ์ (Refine & Expand)"):
         if not behavior_input:
-            st.error("กรุณาพิมพ์เรื่องราวคร่าวๆ ในช่อง 'พฤติการณ์การจับกุม' ด้านบนก่อนครับ")
+            st.error("กรุณาระบุพฤติการณ์ฉบับร่างใน 'ส่วนที่ 4' ก่อนทำการตรวจทาน")
         else:
             try:
                 genai.configure(api_key=API_KEY)
@@ -195,25 +233,24 @@ with st.container(border=True):
                     f"ข้อห้ามเด็ดขาด: ประโยคสุดท้ายของพฤติการณ์ **บังคับต้องจบด้วยคำนี้เป๊ะๆห้ามเปลี่ยน**: '{ending_sentence}'\n"
                     f"ให้เขียนด้วยภาษากฎหมายสละสลวย"
                 )
-                with st.spinner('กำลังเกลาและเติมเต็มเนื้อหา...'):
+                with st.spinner('กำลังเรียบเรียงพฤติการณ์...'):
                     st.session_state['ai_result_3'] = model.generate_content(prompt).text
             except Exception as e:
-                st.error(f"เกิดข้อผิดพลาด: {e}")
+                st.error(f"ระบบขัดข้อง: {e}")
                 
     if 'ai_result_3' in st.session_state:
-        st.success("✨ พฤติการณ์ที่เกลาแล้ว (ก๊อปปี้ไปวางทับในช่องพฤติการณ์ด้านบนได้เลย):")
+        st.success("ข้อความที่ผ่านการเรียบเรียงแล้ว:")
         st.write(st.session_state['ai_result_3'])
 
 # ==========================================
 # 📄 ส่วนที่ 6: สร้างไฟล์ Word และดูตัวอย่าง
 # ==========================================
-st.divider()
-st.subheader("📄 6. ภาพรวมเอกสาร และ ดาวน์โหลด")
+st.markdown("### ส่วนที่ 6: ตรวจทานและส่งออกเอกสาร")
 
 col_preview, col_export = st.columns(2)
 
 with col_preview:
-    if st.button("👁️ แสดงตัวอย่างบันทึกจับกุม", use_container_width=True):
+    if st.button("แสดงตัวอย่างบันทึกจับกุม (Preview Document)", use_container_width=True):
         st.session_state.show_preview = True
 
 with col_export:
@@ -324,7 +361,7 @@ with col_export:
 
     word_file = create_word_doc()
     st.download_button(
-        label="📥 ดาวน์โหลดไฟล์ Word (.docx)",
+        label="ดาวน์โหลดเอกสาร (Export to Word .docx)",
         data=word_file,
         file_name=f"บันทึกจับกุม.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -347,10 +384,10 @@ if st.session_state.show_preview:
     behavior_html = behavior_input.replace('\n', '<br>')
     
     st.markdown("---")
-    st.markdown("### 📋 ตัวอย่างบันทึกจับกุม (อ้างอิงจากข้อมูลที่ท่านกรอก)")
+    st.markdown("### 📄 ร่างตัวอย่างบันทึกการจับกุม")
     preview_text = f"""
-<div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; color: black; font-size: 16px;">
-    <h3 style="text-align: center;">บันทึกการจับกุม</h3>
+<div style="background-color: #FFFFFF; padding: 30px; border: 1px solid #D6DCE5; border-radius: 4px; color: #333333; font-size: 16px; font-family: 'Sarabun', sans-serif; box-shadow: 0 4px 8px rgba(0,0,0,0.05);">
+    <h3 style="text-align: center; color: #0F2C59;">บันทึกการจับกุม</h3>
     <p><b>สถานที่ทำบันทึก:</b> {report_loc}</p>
     <p><b>วัน/เดือน/ปี ที่บันทึก:</b> {report_date}</p>
     <p><b>วัน/เดือน/ปี ที่จับกุม:</b> {arrest_date}</p>
@@ -360,13 +397,16 @@ if st.session_state.show_preview:
     <p><b>เจ้าหน้าที่ตำรวจชุดจับกุม ได้แก่</b> {officers}</p>
     <br>
     <p><b>ได้ร่วมกันจับกุมตัวผู้ต้องหา คือ</b><br>{suspect_html}</p>
+    <br>
     <p><b>พร้อมด้วยของกลาง:</b><br>{evidence_html}</p>
+    <br>
     <p><b>โดยกล่าวหาว่า:</b> “{charge_input}”</p>
     <br>
     <p><b>พฤติการณ์ในการจับกุม กล่าวคือ</b><br>{behavior_html}</p>
     <p><b>ในชั้นจับกุม</b> {suspect_statement}</p>
     <br>
-    <p><i>(ข้อความแจ้งสิทธิ, พ.ร.บ.อุ้มหายฯ และช่องเซ็นชื่อ จะถูกแนบอัตโนมัติในไฟล์ Word ตามรูปแบบมาตรฐานครับ)</i></p>
+    <hr style="border-top: 1px dashed #cccccc;">
+    <p style="text-align: center; color: #888888;"><i>(ข้อความแจ้งสิทธิตามกฎหมาย, พ.ร.บ.อุ้มหายฯ และช่องลงนาม จะปรากฏอย่างครบถ้วนในเอกสาร Word ที่ดาวน์โหลด)</i></p>
 </div>
     """
     st.markdown(preview_text, unsafe_allow_html=True)
